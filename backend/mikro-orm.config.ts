@@ -1,5 +1,6 @@
 import { defineConfig } from '@mikro-orm/postgresql';
 import { Migrator } from '@mikro-orm/migrations';
+import { SeedManager } from '@mikro-orm/seeder';
 
 export default defineConfig({
   host: process.env.DB_HOST ?? 'localhost',
@@ -14,9 +15,14 @@ export default defineConfig({
     warnWhenNoEntities: false,
   },
   debug: process.env.NODE_ENV !== 'production',
-  extensions: [Migrator],
+  extensions: [Migrator, SeedManager],
   migrations: {
     path: 'dist/src/migrations',
     pathTs: 'src/migrations',
+  },
+  seeder: {
+    path: 'dist/src/seeders',
+    pathTs: 'src/seeders',
+    defaultSeeder: 'DatabaseSeeder',
   },
 });
