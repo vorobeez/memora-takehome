@@ -1,6 +1,6 @@
 # Notes
 
-## Session 1 — Understanding the domain and initial setup
+## Session 1: Understanding the domain and initial setup
 
 I started by reading the assignment several times and collecting questions before writing any code. I grouped them into three categories:
 
@@ -60,3 +60,39 @@ By the end of the session I:
 - Confirmed that PostGIS was available and the migration executed successfully.
 
 At this stage the database schema is in place and the next step is implementing deterministic seed data import from the provided files.
+
+## Session 2: Seeding and /v1/facilities/:facilityId/bays endpoint
+
+This session focused on loading deterministic data and building the first API endpoint. My goal was to get a thin backend slice working so I could start the frontend map before adding filters and pagination.
+
+### Entities
+
+I asked Codex to add MikroORM entities based on the migration schema. Its first suggestion included complex relationship metadata that duplicated constraints already defined in the migration. I initially tried to understand every part of that mapping, but ultimately simplified the entities to the fields needed for querying and kept the migration as the source of truth for constraints and indexes.
+
+### Domain
+
+I considered creating separate domain models for the main entities. Since there is no domain behaviour around them, I decided to keep only the ORM entities. I added a small domain module for bay statuses and API response types; filter-related types can be added there when the endpoint gains filtering.
+
+### Seeding
+
+I used MikroORM's seeder infrastructure but wrote raw SQL for inserts because it made the PostGIS geometry conversion explicit. Operators could have been created through the ORM, but I kept one consistent approach for all seeded records. The inserts use upserts so the seed remains deterministic and can be run repeatedly.
+
+### NestJS Facilities Module
+
+I created a module for the `GET /v1/facilities/:facilityId/bays` endpoint. For now it returns bays filtered by `facilityId`, which is enough to set up the initial frontend map before implementing status, bounding-box and pagination parameters.
+
+I chose a regular response DTO with GeoJSON geometry embedded alongside `code` and `status`, rather than returning a GeoJSON `FeatureCollection`. This should be straightforward to use in both the map and side panel, without wrapping application fields in a GeoJSON `properties` object only to unwrap them in the frontend.
+
+### AI usage
+
+Up to this point I used ChatGPT and Codex mainly to reduce friction while learning MikroORM, which remains my main area of uncertainty. I reviewed each proposed change, asked for the reasoning behind unfamiliar code and checked the documentation when I needed a deeper understanding. The overly complex initial entity mapping was a useful reminder not to accept generated code before understanding whether the complexity was necessary.
+
+### Progress
+
+By the end of the session I:
+
+- Added minimal MikroORM entities for operators, facilities and bays.
+- Implemented repeatable seed import for two operators.
+- Added the first facilities module and endpoint.
+
+The next step is creating the minimal frontend map, followed by tenant context, filtering, pagination and the remaining spatial endpoint.
