@@ -8,6 +8,7 @@
   "scripts": {
     "db:up": "docker compose up -d",
     "db:migrate": "npm --prefix backend run migration:up",
-    "db:seed": "npm --prefix backend run seed"
+    "db:seed": "npm --prefix backend run seed",
+    "be:dev": "npm --prefix backend run start:dev"
   }
 }
