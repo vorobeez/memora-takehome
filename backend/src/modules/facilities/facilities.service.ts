@@ -17,9 +17,10 @@ export class FacilitiesService {
     private readonly baysRepo: EntityRepository<Bay>,
   ) {}
 
-  async getBays(facilityId: string) {
+  async getBays(facilityId: string, operatorId: string) {
     const facility = await this.facilitiesRepo.findOne({
       id: facilityId,
+      operatorId,
     });
 
     if (!facility) {
@@ -37,8 +38,8 @@ export class FacilitiesService {
         raw('ST_Area("b"."geom"::geography)').as('area'),
       ])
       .where({
-        operatorId: facility.operatorId,
-        facilityId: facility.id,
+        operatorId,
+        facilityId,
       })
       .execute<BaysResponse>();
   }

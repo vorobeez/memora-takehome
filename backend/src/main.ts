@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { MikroORM } from '@mikro-orm/postgresql';
-import { AppModule } from './app.module';
 import { VersioningType } from '@nestjs/common';
+import { MikroORM } from '@mikro-orm/postgresql';
+
+import { AppModule } from './app.module';
+import { OperatorContextGuard } from './guards/operatorContext.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
