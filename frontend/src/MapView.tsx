@@ -9,6 +9,8 @@ type Props = {
     latitude: number;
   };
   sourceData: FeatureCollection;
+  selectedBayId: string | null;
+  onBaySelect: (bayId: string | null) => void;
 };
 
 const BAY_STATUS_COLOR = {
@@ -19,7 +21,12 @@ const BAY_STATUS_COLOR = {
 
 const BAY_STATUS_FALLBACK_COLOR = "#94a3b8";
 
-export const MapView = ({ facilityCenter, sourceData }: Props) => {
+export const MapView = ({
+  facilityCenter,
+  sourceData,
+  selectedBayId,
+  onBaySelect,
+}: Props) => {
   return (
     <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}>
       <Map
@@ -28,6 +35,17 @@ export const MapView = ({ facilityCenter, sourceData }: Props) => {
           zoom: 18,
         }}
         mapStyle="https://tiles.openfreemap.org/styles/liberty"
+        interactiveLayerIds={["bays-fill"]}
+        onClick={(event) => {
+          const bayId = event.features?.[0]?.properties.id;
+          onBaySelect(typeof bayId === "string" ? bayId : null);
+        }}
+        onMouseEnter={(event) => {
+          event.target.getCanvas().style.cursor = "pointer";
+        }}
+        onMouseLeave={(event) => {
+          event.target.getCanvas().style.cursor = "";
+        }}
       >
         <Source id="bays" type="geojson" data={sourceData}>
           <Layer
@@ -57,6 +75,18 @@ export const MapView = ({ facilityCenter, sourceData }: Props) => {
               "line-width": 1,
             }}
           />
+
+          {selectedBayId && (
+            <Layer
+              id="selected-bay-outline"
+              type="line"
+              filter={["==", ["get", "id"], selectedBayId]}
+              paint={{
+                "line-color": "#2563eb",
+                "line-width": 3,
+              }}
+            />
+          )}
         </Source>
       </Map>
     </div>

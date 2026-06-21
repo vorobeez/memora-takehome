@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import type { BaysResponse } from "./domain/bay";
+import type { BayResponse, BaysResponse } from "./domain/bay";
+import { BaySidePanel } from "./BaySidePanel";
 import { MapView } from "./MapView";
 import type { FeatureCollection } from "geojson";
 
@@ -21,6 +23,7 @@ const getFacilityBays = async (facilityId: string): Promise<BaysResponse> => {
 };
 
 export const MapController = ({ facilityId, facilityCenter }: Props) => {
+  const [selectedBay, setSelectedBay] = useState<BayResponse | null>(null);
   const baysQuery = useQuery({
     queryKey: ["facilityBays", facilityId],
     queryFn: () => getFacilityBays(facilityId),
@@ -34,17 +37,35 @@ export const MapController = ({ facilityId, facilityCenter }: Props) => {
     case "success": {
       const sourceData: FeatureCollection = {
         type: "FeatureCollection",
-        features: baysQuery.data.map(({ geometry, status }) => ({
+        features: baysQuery.data.map(({ geometry, id, status }) => ({
           type: "Feature",
           geometry,
           properties: {
+            id,
             status,
           },
         })),
       };
 
       return (
-        <MapView facilityCenter={facilityCenter} sourceData={sourceData} />
+        <>
+          <MapView
+            facilityCenter={facilityCenter}
+            sourceData={sourceData}
+            selectedBayId={selectedBay?.id ?? null}
+            onBaySelect={(bayId) => {
+              setSelectedBay(
+                baysQuery.data.find((bay) => bay.id === bayId) ?? null,
+              );
+            }}
+          />
+          {selectedBay && (
+            <BaySidePanel
+              bay={selectedBay}
+              onClose={() => setSelectedBay(null)}
+            />
+          )}
+        </>
       );
     }
   }
