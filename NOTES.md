@@ -96,3 +96,33 @@ By the end of the session I:
 - Added the first facilities module and endpoint.
 
 The next step is creating the minimal frontend map, followed by tenant context, filtering, pagination and the remaining spatial endpoint.
+
+## Session 3: Map and side panel
+
+This short session focused on frontend development. My goal was to render the seeded bays on a map and add the required interaction for viewing bay details.
+
+### Shared API contract
+
+I considered creating shared API types for the backend and frontend. After looking into it, I decided that configuring TypeScript to share them properly would take more time than it was worth for this take-home project. Instead, I duplicated the small set of API response types in each application.
+
+### Constant facility
+
+I decided to store the current facility in a constant because I do not plan to add an endpoint for choosing a facility. I isolated this detail in `App.tsx`; the other components receive the facility through props and do not depend on the constant directly.
+
+### GeoJSON properties and colouring
+
+Turns out the bay status needs to be included in each GeoJSON feature because MapLibre uses feature properties to calculate the layer colour. This felt like the most natural use of the map API. I kept the backend contract unchanged and transformed the API response into a `FeatureCollection` in the frontend.
+
+### Side panel feature
+
+I used Codex to implement the side panel. I first asked it to describe its approach, adjusted the proposed plan and requested that the styling remain as lean as possible. It then implemented the feature, and I reviewed the result and fixed a few minor issues myself.
+
+### Progress
+
+By the end of the session I:
+
+- Added the MapLibre map centred on the seeded facility.
+- Rendered bay polygons coloured by status.
+- Added bay selection and a side panel showing the code, status and area.
+
+The next step is adding tenant context, status filtering and the remaining backend requirements.
