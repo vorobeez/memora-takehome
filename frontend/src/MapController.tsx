@@ -19,7 +19,13 @@ const getFacilityBays = async (facilityId: string): Promise<BaysResponse> => {
     `http://localhost:3000/v1/facilities/${facilityId}/bays`,
   );
 
-  return response.json();
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(responseData.message ?? "Unknown error");
+  }
+
+  return responseData;
 };
 
 export const MapController = ({ facilityId, facilityCenter }: Props) => {
@@ -27,6 +33,7 @@ export const MapController = ({ facilityId, facilityCenter }: Props) => {
   const baysQuery = useQuery({
     queryKey: ["facilityBays", facilityId],
     queryFn: () => getFacilityBays(facilityId),
+    retry: false,
   });
 
   switch (baysQuery.status) {
@@ -35,6 +42,14 @@ export const MapController = ({ facilityId, facilityCenter }: Props) => {
     case "error":
       return <div>Error: {baysQuery.error.message}</div>;
     case "success": {
+      if (!Array.isArray(baysQuery.data)) {
+        return <div>Incorrect response schema</div>;
+      }
+
+      if (baysQuery.data.length === 0) {
+        return <div>Empty response</div>;
+      }
+
       const sourceData: FeatureCollection = {
         type: "FeatureCollection",
         features: baysQuery.data.map(({ geometry, id, status }) => ({
