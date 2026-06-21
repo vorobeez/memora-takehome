@@ -19,6 +19,7 @@ export type BayResponse = {
   code: string;
   status: BayStatusValues;
   geometry: PolygonGeometry;
+  area: number;
 };
 
 export type BaysResponse = Array<BayResponse>;

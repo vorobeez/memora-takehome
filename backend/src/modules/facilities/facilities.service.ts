@@ -34,6 +34,7 @@ export class FacilitiesService {
         'b.code',
         'b.status',
         raw('ST_AsGeoJSON("b"."geom")::json').as('geometry'),
+        raw('ST_Area("b"."geom"::geography)').as('area'),
       ])
       .where({
         operatorId: facility.operatorId,
