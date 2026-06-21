@@ -3,7 +3,7 @@ import { VersioningType } from '@nestjs/common';
 import { MikroORM } from '@mikro-orm/postgresql';
 
 import { AppModule } from './app.module';
-import { OperatorContextGuard } from './guards/operatorContext.guard';
+import { DatabaseSeeder } from './seeders/database.seeder';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +11,7 @@ async function bootstrap() {
   const orm = app.get(MikroORM);
 
   await orm.migrator.up();
-  await orm.seeder.seed();
+  await orm.seeder.seed(DatabaseSeeder);
 
   app.enableVersioning({
     type: VersioningType.URI,

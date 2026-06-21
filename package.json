@@ -10,6 +10,7 @@
     "db:migrate": "npm --prefix backend run migration:up",
     "db:seed": "npm --prefix backend run seed",
     "be:dev": "npm --prefix backend run start:dev",
+    "be:test:e2e": "npm --prefix backend run test:e2e",
     "fe:dev": "npm --prefix frontend run dev"
   }
 }
