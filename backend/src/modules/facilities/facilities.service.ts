@@ -2,13 +2,13 @@ import { raw } from '@mikro-orm/core';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { validate } from 'class-validator';
 
+import { BaysResponse } from 'src/domain/bay';
 import { Facility } from '../../entities/facility.entity';
 import { Bay } from '../../entities/bay.entity';
 import { FacilityNotFound } from './facilities.errors';
-import { BaysResponse } from 'src/domain/bay';
-import { BaysParamsDTO } from './facilities.dto';
-import { validate } from 'class-validator';
+import { BaysParamsDTO, parseBoundingBox } from './facilities.dto';
 
 @Injectable()
 export class FacilitiesService {
@@ -57,6 +57,17 @@ export class FacilitiesService {
       query.andWhere({
         status: params.status,
       });
+    }
+
+    const boundingBox = parseBoundingBox(params.bbox);
+
+    if (boundingBox) {
+      query.andWhere(
+        raw(
+          'ST_Intersects("b"."geom", ST_MakeEnvelope(?, ?, ?, ?, 4326))',
+          boundingBox,
+        ),
+      );
     }
 
     return query.execute<BaysResponse>();

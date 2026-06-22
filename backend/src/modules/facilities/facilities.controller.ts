@@ -21,9 +21,11 @@ export class FacilitiesController {
     @Param() { facilityId }: GetBaysParams,
     @OperatorId() operatorId: string,
     @Query('status') status: BayStatusValues | undefined,
+    @Query('bbox') bbox: string | undefined,
   ): Promise<BaysResponse> {
     const paramsDto = new BaysParamsDTO();
     paramsDto.status = status;
+    paramsDto.bbox = bbox;
 
     return this.facilitiesService.getBays(facilityId, operatorId, paramsDto);
   }
