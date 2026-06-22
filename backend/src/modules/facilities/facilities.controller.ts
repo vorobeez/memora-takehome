@@ -1,8 +1,9 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 
 import { FacilitiesService } from './facilities.service';
-import { BaysResponse } from 'src/domain/bay';
+import { BaysResponse, BayStatusValues } from 'src/domain/bay';
 import { OperatorId } from 'src/decorators/operatorId.decorator';
+import { BaysParamsDTO } from './facilities.dto';
 
 type GetBaysParams = {
   facilityId: string;
@@ -17,9 +18,13 @@ export class FacilitiesController {
 
   @Get(':facilityId/bays')
   async getBays(
-    @Param() params: GetBaysParams,
+    @Param() { facilityId }: GetBaysParams,
     @OperatorId() operatorId: string,
+    @Query('status') status: BayStatusValues | undefined,
   ): Promise<BaysResponse> {
-    return this.facilitiesService.getBays(params.facilityId, operatorId);
+    const paramsDto = new BaysParamsDTO();
+    paramsDto.status = status;
+
+    return this.facilitiesService.getBays(facilityId, operatorId, paramsDto);
   }
 }

@@ -15,6 +15,7 @@ export type PolygonGeometry = {
 
 export type BayResponse = {
   id: string;
+  operatorId: string;
   facilityId: string;
   code: string;
   status: BayStatusValues;

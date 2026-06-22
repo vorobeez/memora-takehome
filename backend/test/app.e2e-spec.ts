@@ -12,7 +12,7 @@ const FACILITY_A_ID = 'fac-gladsaxe-demo';
 
 const FACILITY_B_ID = 'fac-gladsaxe-demo-b';
 
-describe('AppController (e2e)', () => {
+describe('Facilities API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
@@ -64,9 +64,33 @@ describe('AppController (e2e)', () => {
         expect(data.body).toHaveLength(60);
 
         data.body.forEach((bay) => {
+          expect(bay.operatorId).toBe(OPERATOR_A_ID);
           expect(bay.facilityId).toBe(FACILITY_A_ID);
         });
       });
+  });
+
+  it('filters bays by status within the requested facility', () => {
+    return request(app.getHttpServer())
+      .get(`/v1/facilities/${FACILITY_A_ID}/bays?status=available`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200)
+      .then((data) => {
+        expect(data.body).toHaveLength(27);
+
+        data.body.forEach((bay) => {
+          expect(bay.operatorId).toBe(OPERATOR_A_ID);
+          expect(bay.facilityId).toBe(FACILITY_A_ID);
+          expect(bay.status).toBe('available');
+        });
+      });
+  });
+
+  it('returns Bad Request for an invalid status', () => {
+    return request(app.getHttpServer())
+      .get(`/v1/facilities/${FACILITY_A_ID}/bays?status=invalid`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(400);
   });
 
   afterAll(async () => {
