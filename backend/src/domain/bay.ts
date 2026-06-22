@@ -23,4 +23,21 @@ export type BayResponse = {
   area: number;
 };
 
-export type BaysResponse = Array<BayResponse>;
+export type BoundingBox = [
+  minLng: number,
+  minLat: number,
+  maxLng: number,
+  maxLat: number,
+];
+
+export type BaysCursor = {
+  lastSeenId: string;
+  facilityId: string;
+  status?: BayStatusValues;
+  bbox?: BoundingBox;
+};
+
+export type BaysResponse = {
+  cursor: string | null;
+  items: Array<BayResponse>;
+};

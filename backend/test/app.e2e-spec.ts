@@ -55,18 +55,75 @@ describe('Facilities API (e2e)', () => {
       });
   });
 
-  it('returns bays that belong only to specified facility', () => {
+  it('returns the first page of bays for the specified facility', () => {
     return request(app.getHttpServer())
       .get(`/v1/facilities/${FACILITY_A_ID}/bays`)
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body).toHaveLength(60);
+        expect(data.body.items).toHaveLength(50);
+        expect(data.body.cursor).toEqual(expect.any(String));
 
-        data.body.forEach((bay) => {
+        data.body.items.forEach((bay) => {
           expect(bay.operatorId).toBe(OPERATOR_A_ID);
           expect(bay.facilityId).toBe(FACILITY_A_ID);
         });
+      });
+  });
+
+  it('returns the second page without repeating bays', async () => {
+    const firstPage = await request(app.getHttpServer())
+      .get(`/v1/facilities/${FACILITY_A_ID}/bays`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200);
+
+    const secondPage = await request(app.getHttpServer())
+      .get(
+        `/v1/facilities/${FACILITY_A_ID}/bays?cursor=${encodeURIComponent(firstPage.body.cursor)}`,
+      )
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200);
+
+    expect(secondPage.body.items).toHaveLength(10);
+    expect(secondPage.body.cursor).toBeNull();
+
+    const firstPageIds = new Set(
+      firstPage.body.items.map((bay: { id: string }) => bay.id),
+    );
+
+    secondPage.body.items.forEach((bay) => {
+      expect(firstPageIds.has(bay.id)).toBe(false);
+      expect(bay.operatorId).toBe(OPERATOR_A_ID);
+      expect(bay.facilityId).toBe(FACILITY_A_ID);
+    });
+  });
+
+  it('returns Bad Request for a cursor with mismatched internal parameters', async () => {
+    const firstPage = await request(app.getHttpServer())
+      .get(`/v1/facilities/${FACILITY_A_ID}/bays`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200);
+
+    const decodedCursor = JSON.parse(
+      Buffer.from(firstPage.body.cursor, 'base64url').toString('utf8'),
+    );
+    const invalidCursor = Buffer.from(
+      JSON.stringify({
+        ...decodedCursor,
+        facilityId: FACILITY_B_ID,
+      }),
+      'utf8',
+    ).toString('base64url');
+
+    return request(app.getHttpServer())
+      .get(
+        `/v1/facilities/${FACILITY_A_ID}/bays?cursor=${encodeURIComponent(invalidCursor)}`,
+      )
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Invalid pagination cursor',
       });
   });
 
@@ -76,9 +133,10 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body).toHaveLength(27);
+        expect(data.body.items).toHaveLength(27);
+        expect(data.body.cursor).toBeNull();
 
-        data.body.forEach((bay) => {
+        data.body.items.forEach((bay) => {
           expect(bay.operatorId).toBe(OPERATOR_A_ID);
           expect(bay.facilityId).toBe(FACILITY_A_ID);
           expect(bay.status).toBe('available');
@@ -101,8 +159,9 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body).toHaveLength(1);
-        expect(data.body[0]).toMatchObject({
+        expect(data.body.items).toHaveLength(1);
+        expect(data.body.cursor).toBeNull();
+        expect(data.body.items[0]).toMatchObject({
           code: 'L1-A-01',
           operatorId: OPERATOR_A_ID,
           facilityId: FACILITY_A_ID,
@@ -115,21 +174,20 @@ describe('Facilities API (e2e)', () => {
       .get(`/v1/facilities/${FACILITY_A_ID}/bays?bbox=0,0,1,1`)
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
-      .expect([]);
+      .expect({ items: [], cursor: null });
   });
 
   it('combines bounding box and status filters', () => {
     const bbox = '12.471001,55.732001,12.47111,55.73203';
 
     return request(app.getHttpServer())
-      .get(
-        `/v1/facilities/${FACILITY_A_ID}/bays?bbox=${bbox}&status=occupied`,
-      )
+      .get(`/v1/facilities/${FACILITY_A_ID}/bays?bbox=${bbox}&status=occupied`)
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body).toHaveLength(1);
-        expect(data.body[0]).toMatchObject({
+        expect(data.body.items).toHaveLength(1);
+        expect(data.body.cursor).toBeNull();
+        expect(data.body.items[0]).toMatchObject({
           code: 'L1-A-03',
           status: 'occupied',
           operatorId: OPERATOR_A_ID,

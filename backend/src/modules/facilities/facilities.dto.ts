@@ -1,17 +1,12 @@
 import {
+  IsBase64,
   IsIn,
   IsOptional,
   ValidateBy,
   type ValidationOptions,
 } from 'class-validator';
-import { BayStatus, type BayStatusValues } from 'src/domain/bay';
 
-export type BoundingBox = [
-  minLng: number,
-  minLat: number,
-  maxLng: number,
-  maxLat: number,
-];
+import { BayStatus, BoundingBox, type BayStatusValues } from 'src/domain/bay';
 
 export const parseBoundingBox = (value: unknown): BoundingBox | undefined => {
   if (typeof value !== 'string') {
@@ -67,4 +62,8 @@ export class BaysParamsDTO {
   @IsOptional()
   @IsBoundingBox()
   bbox: string | undefined;
+
+  @IsOptional()
+  @IsBase64({ urlSafe: true })
+  cursor: string | undefined;
 }
