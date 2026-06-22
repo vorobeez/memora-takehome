@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import {
   BayStatus,
@@ -24,15 +24,26 @@ const getFacilityBays = async (
   operatorId: string,
   facilityId: string,
   status?: BayStatusValues,
+  cursor?: string,
 ): Promise<BaysResponse> => {
   const headers = new Headers();
 
   headers.set("x-operator-id", operatorId);
 
-  const statusQuery = status ? `?status=${encodeURIComponent(status)}` : "";
+  const queryParams = new URLSearchParams();
+
+  if (status) {
+    queryParams.set("status", status);
+  }
+
+  if (cursor) {
+    queryParams.set("cursor", cursor);
+  }
+
+  const query = queryParams.size > 0 ? `?${queryParams.toString()}` : "";
 
   const response = await fetch(
-    `http://localhost:3000/v1/facilities/${facilityId}/bays${statusQuery}`,
+    `http://localhost:3000/v1/facilities/${facilityId}/bays${query}`,
     {
       headers,
     },
@@ -54,65 +65,75 @@ export const MapController = ({
 }: Props) => {
   const [selectedBay, setSelectedBay] = useState<BayResponse | null>(null);
   const [status, setStatus] = useState<BayStatusValues | undefined>();
-  const baysQuery = useQuery({
+  const baysQuery = useInfiniteQuery({
     queryKey: ["facilityBays", operatorId, facilityId, status ?? "all"],
-    queryFn: () => getFacilityBays(operatorId, facilityId, status),
-    placeholderData: keepPreviousData,
+    queryFn: ({ pageParam }) =>
+      getFacilityBays(operatorId, facilityId, status, pageParam),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.cursor ?? undefined,
     retry: false,
   });
 
-  let content: ReactNode;
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = baysQuery;
 
-  switch (baysQuery.status) {
-    case "pending":
-      content = <div>Loading...</div>;
-      break;
-    case "error":
-      content = <div>Error: {baysQuery.error.message}</div>;
-      break;
-    case "success": {
-      if (!Array.isArray(baysQuery.data)) {
-        content = <div>Incorrect response schema</div>;
-      } else if (baysQuery.data.length === 0) {
-        content = <div>Empty response</div>;
-      } else {
-        const sourceData: FeatureCollection = {
-          type: "FeatureCollection",
-          features: baysQuery.data.map(({ geometry, id, status }) => ({
-            type: "Feature",
-            geometry,
-            properties: {
-              id,
-              status,
-            },
-          })),
-        };
-
-        content = (
-          <>
-            <MapView
-              facilityCenter={facilityCenter}
-              sourceData={sourceData}
-              selectedBayId={selectedBay?.id ?? null}
-              onBaySelect={(bayId) => {
-                setSelectedBay(
-                  baysQuery.data.find((bay) => bay.id === bayId) ?? null,
-                );
-              }}
-            />
-            {selectedBay && (
-              <BaySidePanel
-                bay={selectedBay}
-                onClose={() => setSelectedBay(null)}
-              />
-            )}
-          </>
-        );
-      }
-
-      break;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const renderContent = (): ReactNode => {
+    if (baysQuery.status === "pending") {
+      return <div>Loading...</div>;
+    }
+
+    if (baysQuery.status === "error") {
+      return <div>Error: {baysQuery.error.message}</div>;
+    }
+
+    if (!baysQuery.data.pages.every((page) => Array.isArray(page.items))) {
+      return <div>Incorrect response schema</div>;
+    }
+
+    const bays = baysQuery.data.pages.flatMap((page) => page.items);
+
+    if (bays.length === 0) {
+      return <div>Empty response</div>;
+    }
+
+    const sourceData: FeatureCollection = {
+      type: "FeatureCollection",
+      features: bays.map(({ geometry, id, status }) => ({
+        type: "Feature",
+        geometry,
+        properties: {
+          id,
+          status,
+        },
+      })),
+    };
+
+    return (
+      <>
+        <MapView
+          facilityCenter={facilityCenter}
+          sourceData={sourceData}
+          selectedBayId={selectedBay?.id ?? null}
+          onBaySelect={(bayId) => {
+            setSelectedBay(bays.find((bay) => bay.id === bayId) ?? null);
+          }}
+        />
+        {selectedBay && (
+          <BaySidePanel
+            bay={selectedBay}
+            onClose={() => setSelectedBay(null)}
+          />
+        )}
+      </>
+    );
+  };
+
+  const content = renderContent();
 
   return (
     <>

@@ -22,4 +22,7 @@ export type BayResponse = {
   area: number;
 };
 
-export type BaysResponse = Array<BayResponse>;
+export type BaysResponse = {
+  items: Array<BayResponse>;
+  cursor: string | null;
+};
