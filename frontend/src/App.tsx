@@ -3,6 +3,8 @@ import { MapController } from "./MapController";
 
 const queryClient = new QueryClient();
 
+const OPERATOR_ID = "operator-a";
+
 const DEMO_FACILITY = {
   id: "fac-gladsaxe-demo",
 
@@ -23,6 +25,7 @@ export const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <MapController
+        operatorId={OPERATOR_ID}
         facilityId={DEMO_FACILITY.id}
         facilityCenter={DEMO_FACILITY.center}
       />

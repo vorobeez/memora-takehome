@@ -7,6 +7,7 @@ import { MapView } from "./MapView";
 import type { FeatureCollection } from "geojson";
 
 type Props = {
+  operatorId: string;
   facilityId: string;
   facilityCenter: {
     longitude: number;
@@ -14,9 +15,19 @@ type Props = {
   };
 };
 
-const getFacilityBays = async (facilityId: string): Promise<BaysResponse> => {
+const getFacilityBays = async (
+  operatorId: string,
+  facilityId: string,
+): Promise<BaysResponse> => {
+  const headers = new Headers();
+
+  headers.set("x-operator-id", operatorId);
+
   const response = await fetch(
     `http://localhost:3000/v1/facilities/${facilityId}/bays`,
+    {
+      headers,
+    },
   );
 
   const responseData = await response.json();
@@ -28,11 +39,15 @@ const getFacilityBays = async (facilityId: string): Promise<BaysResponse> => {
   return responseData;
 };
 
-export const MapController = ({ facilityId, facilityCenter }: Props) => {
+export const MapController = ({
+  operatorId,
+  facilityId,
+  facilityCenter,
+}: Props) => {
   const [selectedBay, setSelectedBay] = useState<BayResponse | null>(null);
   const baysQuery = useQuery({
     queryKey: ["facilityBays", facilityId],
-    queryFn: () => getFacilityBays(facilityId),
+    queryFn: () => getFacilityBays(operatorId, facilityId),
     retry: false,
   });
 
