@@ -12,26 +12,31 @@ const FACILITY_A_ID = 'fac-gladsaxe-demo';
 
 const FACILITY_B_ID = 'fac-gladsaxe-demo-b';
 
+const createTestApp = async (): Promise<INestApplication<App>> => {
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
+
+  const app = moduleFixture.createNestApplication();
+  const orm = app.get(MikroORM);
+
+  await orm.migrator.up();
+  await orm.seeder.seed(DatabaseSeeder);
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
+
+  await app.init();
+
+  return app;
+};
+
 describe('Facilities API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-
-    const orm = app.get(MikroORM);
-
-    await orm.migrator.up();
-    await orm.seeder.seed(DatabaseSeeder);
-
-    app.enableVersioning({
-      type: VersioningType.URI,
-    });
-
-    await app.init();
+    app = await createTestApp();
   });
 
   it('returns Bad Request error if x-operator-id is missing', () => {
@@ -208,6 +213,47 @@ describe('Facilities API (e2e)', () => {
       .get(`/v1/facilities/${FACILITY_A_ID}/bays?bbox=${bbox}`)
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(400);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+});
+
+describe('Nearby bays API (e2e)', () => {
+  const lng = '12.471020015';
+  const lat = '55.73202246';
+
+  let app: INestApplication<App>;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+  });
+
+  it('returns bays within the radius nearest-first', () => {
+    return request(app.getHttpServer())
+      .get(`/v1/bays/nearby?lng=${lng}&lat=${lat}&radius=4`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200)
+      .then((data) => {
+        expect(data.body.map((bay) => bay.code)).toEqual([
+          'L1-A-01',
+          'L1-A-02',
+        ]);
+      });
+  });
+
+  it("does not return another operator's nearby bays", () => {
+    return request(app.getHttpServer())
+      .get(`/v1/bays/nearby?lng=${lng}&lat=${lat}&radius=1000`)
+      .set('x-operator-id', OPERATOR_A_ID)
+      .expect(200)
+      .then((data) => {
+        expect(data.body).toHaveLength(60);
+        data.body.forEach((bay) => {
+          expect(bay.operatorId).toBe(OPERATOR_A_ID);
+        });
+      });
   });
 
   afterAll(async () => {
