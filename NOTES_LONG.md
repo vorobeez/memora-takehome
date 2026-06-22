@@ -126,3 +126,45 @@ By the end of the session I:
 - Added bay selection and a side panel showing the code, status and area.
 
 The next step is adding tenant context, status filtering and the remaining backend requirements.
+
+## Session 4: Finishing the core
+
+After spending more than six hours on the assignment, I decided not to pursue the stretch goals. Finishing the core requirements provides a functional application with enough structure to extend later without adding unnecessary scope now.
+
+### Multi-tenancy
+
+I implemented tenant context using a NestJS guard and the `x-operator-id` header. Database queries filter by the operator from this context as well as the requested facility, preventing one operator from reading another operator's bays.
+
+I chose e2e tests for this behaviour because tenant isolation crosses several layers, from the guard and controller through to the database query.
+
+### Status filtering and test strategy
+
+I added status filtering with query-parameter DTO validation. I initially asked Codex to scaffold unit tests for the facilities service. This helped me resolve the Jest transform and ESM configuration quickly, based on the setup already used by the e2e tests.
+
+However, the generated tests relied on more mocking than I found useful. I preferred black-box tests that verify observable API results and real database filtering, so I moved this coverage to the e2e suite. I also used Codex to implement the small frontend status control because the application structure and expected behaviour were already established.
+
+### Bounding-box filtering
+
+I planned this feature with Codex because it follows the same general structure as the status filter: DTO validation, query-builder changes and e2e coverage. I supplied the README requirements and specified that filtering should use PostGIS `ST_Intersects`. Codex implemented the feature, after which I reviewed the query and validation behaviour.
+
+### Cursor pagination
+
+I implemented cursor pagination myself because it was my first time building this type of pagination and I wanted to understand the mechanics properly. I used Codex mainly to discuss the design and review technical details.
+
+The main decision was how to validate cursors. I chose to validate the decoded structure and then verify that its facility and filter state match the current request, returning `400` when they do not. I considered modelling the decoded cursor as another `class-validator` DTO, but kept the validation separate because the encoded query parameter and its internal state are different boundaries.
+
+### Nearby bays endpoint
+
+I planned this endpoint with Codex and asked it to implement the module because its structure closely resembles the existing facilities module; only the parameters and spatial query differ. I reviewed the implementation and made a few minor corrections. Reusing the established module pattern made this a good candidate for AI-assisted implementation without introducing new architectural decisions.
+
+### Progress
+
+By the end of the session I:
+
+- Added tenant isolation through request context and database filters.
+- Added status and bounding-box filtering.
+- Implemented cursor-based pagination and frontend page loading.
+- Added the nearby bays endpoint using metre-based PostGIS distance queries.
+- Covered the main API behaviour and tenant isolation with e2e tests.
+
+At this point the core requirements are complete. The remaining work is a final review and submission preparation.
