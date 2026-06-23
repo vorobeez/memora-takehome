@@ -22,12 +22,16 @@ import { decodeCursor, encodeCursor } from 'src/utils/cursor';
 
 const PAGE_SIZE = 50;
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
 const parseCursor = (cursor: string | undefined): BaysCursor | undefined => {
   if (!cursor) {
     return undefined;
   }
 
-  let decodedCursor;
+  let decodedCursor: unknown;
 
   try {
     decodedCursor = decodeCursor(cursor);
@@ -35,36 +39,37 @@ const parseCursor = (cursor: string | undefined): BaysCursor | undefined => {
     throw new InvalidCursorException();
   }
 
-  if (typeof decodedCursor !== 'object' || decodedCursor === null) {
+  if (!isRecord(decodedCursor)) {
     throw new InvalidCursorException();
   }
 
-  if (
-    !('lastSeenId' in decodedCursor) ||
-    typeof decodedCursor.lastSeenId !== 'string'
-  ) {
+  const lastSeenId = decodedCursor.lastSeenId;
+  const facilityId = decodedCursor.facilityId;
+  const status = decodedCursor.status;
+  const bbox = decodedCursor.bbox;
+
+  if (typeof lastSeenId !== 'string') {
     throw new InvalidCursorException();
   }
 
-  if (
-    !('facilityId' in decodedCursor) ||
-    typeof decodedCursor.facilityId !== 'string'
-  ) {
+  if (typeof facilityId !== 'string') {
     throw new InvalidCursorException();
   }
 
-  if ('status' in decodedCursor && typeof decodedCursor.status !== 'string') {
+  if (status !== undefined && typeof status !== 'string') {
     throw new InvalidCursorException();
   }
 
-  if (
-    'bbox' in decodedCursor &&
-    (!Array.isArray(decodedCursor.bbox) || decodedCursor.bbox.length !== 4)
-  ) {
+  if (bbox !== undefined && (!Array.isArray(bbox) || bbox.length !== 4)) {
     throw new InvalidCursorException();
   }
 
-  return decodedCursor as BaysCursor;
+  return {
+    lastSeenId,
+    facilityId,
+    status: status as BayStatusValues | undefined,
+    bbox: bbox as BoundingBox | undefined,
+  };
 };
 
 const checkCursorMatch = (

@@ -6,11 +6,26 @@ import { MikroORM } from '@mikro-orm/postgresql';
 
 import { AppModule } from './../src/app.module';
 import { DatabaseSeeder } from 'src/seeders/database.seeder';
+import { BayResponse, BaysCursor, BaysResponse } from 'src/domain/bay';
 
 const OPERATOR_A_ID = 'operator-a';
 const FACILITY_A_ID = 'fac-gladsaxe-demo';
 
 const FACILITY_B_ID = 'fac-gladsaxe-demo-b';
+
+const requireCursor = (cursor: string | null): string => {
+  if (cursor === null) {
+    throw new Error('Expected pagination cursor');
+  }
+
+  return cursor;
+};
+
+const parseEncodedCursor = (cursor: string): BaysCursor => {
+  return JSON.parse(
+    Buffer.from(cursor, 'base64url').toString('utf8'),
+  ) as BaysCursor;
+};
 
 const createTestApp = async (): Promise<INestApplication<App>> => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -66,10 +81,12 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body.items).toHaveLength(50);
-        expect(data.body.cursor).toEqual(expect.any(String));
+        const body = data.body as BaysResponse;
 
-        data.body.items.forEach((bay) => {
+        expect(body.items).toHaveLength(50);
+        expect(body.cursor).toEqual(expect.any(String));
+
+        body.items.forEach((bay) => {
           expect(bay.operatorId).toBe(OPERATOR_A_ID);
           expect(bay.facilityId).toBe(FACILITY_A_ID);
         });
@@ -82,21 +99,24 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200);
 
+    const firstPageBody = firstPage.body as BaysResponse;
+    const cursor = requireCursor(firstPageBody.cursor);
+
     const secondPage = await request(app.getHttpServer())
       .get(
-        `/v1/facilities/${FACILITY_A_ID}/bays?cursor=${encodeURIComponent(firstPage.body.cursor)}`,
+        `/v1/facilities/${FACILITY_A_ID}/bays?cursor=${encodeURIComponent(cursor)}`,
       )
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200);
 
-    expect(secondPage.body.items).toHaveLength(10);
-    expect(secondPage.body.cursor).toBeNull();
+    const secondPageBody = secondPage.body as BaysResponse;
 
-    const firstPageIds = new Set(
-      firstPage.body.items.map((bay: { id: string }) => bay.id),
-    );
+    expect(secondPageBody.items).toHaveLength(10);
+    expect(secondPageBody.cursor).toBeNull();
 
-    secondPage.body.items.forEach((bay) => {
+    const firstPageIds = new Set(firstPageBody.items.map((bay) => bay.id));
+
+    secondPageBody.items.forEach((bay) => {
       expect(firstPageIds.has(bay.id)).toBe(false);
       expect(bay.operatorId).toBe(OPERATOR_A_ID);
       expect(bay.facilityId).toBe(FACILITY_A_ID);
@@ -109,8 +129,9 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200);
 
-    const decodedCursor = JSON.parse(
-      Buffer.from(firstPage.body.cursor, 'base64url').toString('utf8'),
+    const firstPageBody = firstPage.body as BaysResponse;
+    const decodedCursor = parseEncodedCursor(
+      requireCursor(firstPageBody.cursor),
     );
     const invalidCursor = Buffer.from(
       JSON.stringify({
@@ -138,10 +159,12 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body.items).toHaveLength(27);
-        expect(data.body.cursor).toBeNull();
+        const body = data.body as BaysResponse;
 
-        data.body.items.forEach((bay) => {
+        expect(body.items).toHaveLength(27);
+        expect(body.cursor).toBeNull();
+
+        body.items.forEach((bay) => {
           expect(bay.operatorId).toBe(OPERATOR_A_ID);
           expect(bay.facilityId).toBe(FACILITY_A_ID);
           expect(bay.status).toBe('available');
@@ -164,9 +187,11 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body.items).toHaveLength(1);
-        expect(data.body.cursor).toBeNull();
-        expect(data.body.items[0]).toMatchObject({
+        const body = data.body as BaysResponse;
+
+        expect(body.items).toHaveLength(1);
+        expect(body.cursor).toBeNull();
+        expect(body.items[0]).toMatchObject({
           code: 'L1-A-01',
           operatorId: OPERATOR_A_ID,
           facilityId: FACILITY_A_ID,
@@ -190,9 +215,11 @@ describe('Facilities API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body.items).toHaveLength(1);
-        expect(data.body.cursor).toBeNull();
-        expect(data.body.items[0]).toMatchObject({
+        const body = data.body as BaysResponse;
+
+        expect(body.items).toHaveLength(1);
+        expect(body.cursor).toBeNull();
+        expect(body.items[0]).toMatchObject({
           code: 'L1-A-03',
           status: 'occupied',
           operatorId: OPERATOR_A_ID,
@@ -236,10 +263,9 @@ describe('Nearby bays API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body.map((bay) => bay.code)).toEqual([
-          'L1-A-01',
-          'L1-A-02',
-        ]);
+        const body = data.body as Array<BayResponse>;
+
+        expect(body.map((bay) => bay.code)).toEqual(['L1-A-01', 'L1-A-02']);
       });
   });
 
@@ -249,8 +275,10 @@ describe('Nearby bays API (e2e)', () => {
       .set('x-operator-id', OPERATOR_A_ID)
       .expect(200)
       .then((data) => {
-        expect(data.body).toHaveLength(60);
-        data.body.forEach((bay) => {
+        const body = data.body as Array<BayResponse>;
+
+        expect(body).toHaveLength(60);
+        body.forEach((bay) => {
           expect(bay.operatorId).toBe(OPERATOR_A_ID);
         });
       });
